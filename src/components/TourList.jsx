@@ -15,7 +15,7 @@ const TourList = () => {
   useEffect(() => {
     const fetchTours = async () => {
       try {
-        const res = await axios.get('http://localhost:5005/api/tours');
+        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/tours`);
         setTours(res.data);
         setLoading(false);
       } catch (err) {
