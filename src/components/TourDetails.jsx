@@ -6,7 +6,13 @@ import {
   MapPin, Clock, DollarSign, CheckCircle, ArrowLeft, 
   Users, Star, Map, Calendar, ChevronDown, Camera, ShieldCheck
 } from 'lucide-react';
-import TourMap from '../components/TourMap'; // <-- Add this import
+
+const TourMap = ({ startLocation, timeline }) => (
+  <div className="w-full h-[300px] bg-[#050505] flex flex-col items-center justify-center rounded-[2.5rem] border border-white/5">
+    <Map className="text-white/20 mb-3" size={40} />
+    <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Interactive Map Placeholder</p>
+  </div>
+);
 
 const TourDetails = () => {
   const { id } = useParams();
@@ -18,7 +24,10 @@ const TourDetails = () => {
   useEffect(() => {
     const fetchTour = async () => {
       try {
-        const res = await axios.get(`http://localhost:5005/api/tours/${id}`);
+        // FIXED: Uses the environment variable for live Vercel deployments!
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5005';
+        const res = await axios.get(`${backendUrl}/api/tours/${id}`);
+        
         // Adjust this depending on your backend response structure (e.g., res.data.data.tour vs res.data)
         setTour(res.data.data ? res.data.data.tour : res.data);
         setLoading(false);
