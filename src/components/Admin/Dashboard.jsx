@@ -142,10 +142,11 @@ const AdminDashboard = () => {
       toast.loading("Uploading stop image...", { id: 'uploadStop' });
       const fileName = `stop-${Date.now()}-${file.name.replace(/\s/g, '-')}`;
       
-      const { error } = await supabase.storage.from('img').upload(fileName, file);
+      // FIXED: Using 'tour-images' bucket instead of 'img'
+      const { error } = await supabase.storage.from('tour-images').upload(fileName, file);
       if (error) throw error;
 
-      const { data: { publicUrl } } = supabase.storage.from('img').getPublicUrl(fileName);
+      const { data: { publicUrl } } = supabase.storage.from('tour-images').getPublicUrl(fileName);
       updateStop(dayIndex, stopIndex, 'image', publicUrl);
       toast.success("Image added!", { id: 'uploadStop' });
     } catch (err) {
@@ -160,14 +161,18 @@ const AdminDashboard = () => {
       setUploading(true);
       const uploadPromises = files.map(async (file) => {
         const fileName = `${Date.now()}-${file.name.replace(/\s/g, '-')}`;
-        const { error } = await supabase.storage.from('img').upload(fileName, file);
+        
+        // FIXED: Using 'tour-images' bucket instead of 'img'
+        const { error } = await supabase.storage.from('tour-images').upload(fileName, file);
         if (error) throw error;
-        const { data: { publicUrl } } = supabase.storage.from('img').getPublicUrl(fileName);
+        
+        const { data: { publicUrl } } = supabase.storage.from('tour-images').getPublicUrl(fileName);
         return publicUrl;
       });
       return await Promise.all(uploadPromises);
     } catch (error) {
-      toast.error("Image upload failed!");
+      toast.error("Image upload failed! Please check your Supabase bucket.");
+      console.error(error);
       return [];
     } finally {
       setUploading(false);
@@ -182,6 +187,11 @@ const AdminDashboard = () => {
       let imageUrls = [];
       if (imageFiles.length > 0) {
         imageUrls = await uploadImagesToSupabase(imageFiles);
+        // Safety Check: Stop execution if image upload completely failed
+        if (imageUrls.length === 0) {
+           setLoading(false);
+           return;
+        }
       } else {
         throw new Error("Please upload at least one main image");
       }
