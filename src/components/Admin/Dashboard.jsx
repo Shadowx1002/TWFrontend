@@ -11,7 +11,7 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('inquiries'); // Default to new inquiries tab
+  const [activeTab, setActiveTab] = useState('inquiries'); 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   
@@ -78,7 +78,7 @@ const AdminDashboard = () => {
     try {
       await axios.delete(`${backendUrl}/api/tours/${id}`);
       toast.success("Tour deleted successfully");
-      fetchTours(); // Refresh list
+      fetchTours(); 
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to delete tour");
     }
@@ -160,10 +160,8 @@ const AdminDashboard = () => {
       setUploading(true);
       const uploadPromises = files.map(async (file) => {
         const fileName = `${Date.now()}-${file.name.replace(/\s/g, '-')}`;
-        
         const { error } = await supabase.storage.from('tour-images').upload(fileName, file);
         if (error) throw error;
-        
         const { data: { publicUrl } } = supabase.storage.from('tour-images').getPublicUrl(fileName);
         return publicUrl;
       });
@@ -185,7 +183,6 @@ const AdminDashboard = () => {
       let imageUrls = [];
       if (imageFiles.length > 0) {
         imageUrls = await uploadImagesToSupabase(imageFiles);
-        // Safety Check: Stop execution if image upload completely failed
         if (imageUrls.length === 0) {
            setLoading(false);
            return;
@@ -195,29 +192,42 @@ const AdminDashboard = () => {
       }
 
       if (activeTab === 'tour') {
-        // FIXED: Filter out empty strings from arrays to prevent MongoDB 400 Validation Errors
         const highlightsArray = formData.highlights ? formData.highlights.split(',').map(h => h.trim()).filter(Boolean) : [];
-        const startDatesArray = formData.startDates ? formData.startDates.split(',').map(d => d.trim()).filter(Boolean) : [];
+        
+        const startDatesArray = formData.startDates 
+          ? formData.startDates.split(',')
+              .map(d => d.trim())
+              .filter(d => d !== '' && !isNaN(Date.parse(d))) 
+          : [];
 
-        await axios.post(`${backendUrl}/api/tours`, {
-          name: formData.name,
-          duration: Number(formData.duration),
-          price: Number(formData.price),
+        // CRITICAL FIX: Mapping the payload keys to match the Mongoose Backend exactly
+        const tourPayload = {
+          name: formData.name.trim(),
+          title: formData.name.trim(), // Sent as title to satisfy Mongoose
+          duration: parseInt(formData.duration) || 1,
+          days: parseInt(formData.duration) || 1, // Fallback for days
+          price: parseFloat(formData.price) || 0,
           summary: formData.summary,
           description: formData.description,
           imageCover: imageUrls[0],
+          image: imageUrls[0], // Sent as image to satisfy Mongoose
           images: imageUrls.slice(1),
           highlights: highlightsArray,
           difficulty: formData.difficulty,
-          maxGroupSize: Number(formData.maxGroupSize),
-          startLocation: { 
+          maxGroupSize: parseInt(formData.maxGroupSize) || 1,
+          location: formData.startLocation || 'Colombo', // Sent as simple string for Mongoose
+          startLocation: { // Kept just in case
             type: 'Point', 
-            description: formData.startLocation,
-            coordinates: [79.8612, 6.9271] // FIXED: Added default GeoJSON coordinates (Colombo) to prevent validation error
+            description: formData.startLocation || 'Colombo',
+            coordinates: [79.8612, 6.9271] 
           },
           startDates: startDatesArray,
           timeline: timeline
-        });
+        };
+
+        console.log("🚀 Sending Tour Data to Database:", tourPayload);
+
+        await axios.post(`${backendUrl}/api/tours`, tourPayload);
         toast.success('Tour Created Successfully!');
 
       } else if (activeTab === 'package') {
@@ -244,11 +254,20 @@ const AdminDashboard = () => {
         toast.success('Vehicle Added Successfully!');
       }
       
-      // Reload page to reset all states cleanly
       window.location.reload(); 
       
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message);
+      console.error("❌ Backend Error Response:", err.response?.data);
+      
+      const errorMsg = err.response?.data?.message || err.message;
+      
+      if (errorMsg.includes("duplicate key") || errorMsg.includes("E11000")) {
+         toast.error("Error: A tour with this Name already exists! Please pick a new name.");
+      } else if (errorMsg.includes("Cast to Date failed")) {
+         toast.error("Error: Invalid Date Format. Please use YYYY-MM-DD.");
+      } else {
+         toast.error(errorMsg); // This will show any remaining validation errors!
+      }
     } finally {
       setLoading(false);
     }
@@ -297,10 +316,9 @@ const AdminDashboard = () => {
         {/* --- CONTENT AREA --- */}
         <div className="p-6 md:p-10 lg:p-12">
 
-          {/* 1. GUEST INQUIRIES TAB (From old Admin Dashboard) */}
+          {/* 1. GUEST INQUIRIES TAB */}
           {activeTab === 'inquiries' && (
             <div className="animate-fade-in">
-              {/* Quick Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
                 {stats.map((s, idx) => (
                   <div key={idx} className="bg-black/40 border border-white/10 p-6 rounded-[2rem] flex items-center justify-between hover:bg-white/5 transition-colors">
@@ -315,7 +333,6 @@ const AdminDashboard = () => {
                 ))}
               </div>
 
-              {/* Inquiries List - Responsive Table */}
               <div className="bg-black/40 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
                 <div className="p-8 border-b border-white/10 flex items-center justify-between bg-white/5">
                   <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter">Recent Inquiries</h3>
@@ -393,7 +410,7 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* 2. MANAGE DATA TAB (Tours) */}
+          {/* 2. MANAGE DATA TAB */}
           {activeTab === 'manage' && (
             <div className="animate-fade-in">
               <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-8 flex items-center gap-3">
@@ -421,10 +438,10 @@ const AdminDashboard = () => {
                       {existingTours.map(tour => (
                         <tr key={tour._id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                           <td className="p-4">
-                            <img src={tour.imageCover} alt={tour.name} className="w-16 h-12 object-cover rounded-xl border border-white/10" />
+                            <img src={tour.image || tour.imageCover} alt={tour.title || tour.name} className="w-16 h-12 object-cover rounded-xl border border-white/10" />
                           </td>
-                          <td className="p-4 font-bold text-sm tracking-tight">{tour.name}</td>
-                          <td className="p-4 text-white/60 text-xs font-bold uppercase tracking-widest">{tour.duration} Days</td>
+                          <td className="p-4 font-bold text-sm tracking-tight">{tour.title || tour.name}</td>
+                          <td className="p-4 text-white/60 text-xs font-bold uppercase tracking-widest">{tour.days || tour.duration} Days</td>
                           <td className="p-4 font-black text-emerald-400">${tour.price}</td>
                           <td className="p-4 text-right">
                             <button 
@@ -452,7 +469,6 @@ const AdminDashboard = () => {
                 Create New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
               </h2>
               
-              {/* Image Upload Area */}
               <div className="border-2 border-dashed border-white/20 p-10 rounded-[2rem] bg-black/20 text-center hover:border-white/40 transition-colors group">
                  <FaImage className="mx-auto text-4xl text-white/20 group-hover:text-blue-500 transition-colors mb-4" />
                  <label className="block font-bold mb-2 uppercase tracking-widest text-sm">Upload Main Images</label>
