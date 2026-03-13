@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 
 // Layout & Common
 import Navbar from './components/Navbar.jsx';
@@ -19,12 +20,12 @@ import TourDetails from './components/TourDetails.jsx';
 import AdminDashboard from './components/Admin/Dashboard.jsx';
 import AddTour from './components/Admin/AddTour.jsx';
 
-
-
-
 function App() {
   return (
     <Router>
+      {/* 🚀 ScrollToTop placed here so it runs on every page change! */}
+      <ScrollToTop />
+      
       <main className="bg-[#0a0a0a] min-h-screen selection:bg-blue-500 selection:text-white">
         <Navbar />
         <Routes>
@@ -37,8 +38,6 @@ function App() {
               <TourList />
               <Gallery />
               <About />
-              
-              
             </div>
           } />
 
@@ -51,10 +50,6 @@ function App() {
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/add-tour" element={<AddTour />} />
-         
-          
-          
-          
           
         </Routes>
         <Footer />
