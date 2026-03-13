@@ -142,7 +142,6 @@ const AdminDashboard = () => {
       toast.loading("Uploading stop image...", { id: 'uploadStop' });
       const fileName = `stop-${Date.now()}-${file.name.replace(/\s/g, '-')}`;
       
-      // FIXED: Using 'tour-images' bucket instead of 'img'
       const { error } = await supabase.storage.from('tour-images').upload(fileName, file);
       if (error) throw error;
 
@@ -162,7 +161,6 @@ const AdminDashboard = () => {
       const uploadPromises = files.map(async (file) => {
         const fileName = `${Date.now()}-${file.name.replace(/\s/g, '-')}`;
         
-        // FIXED: Using 'tour-images' bucket instead of 'img'
         const { error } = await supabase.storage.from('tour-images').upload(fileName, file);
         if (error) throw error;
         
@@ -197,8 +195,9 @@ const AdminDashboard = () => {
       }
 
       if (activeTab === 'tour') {
-        const highlightsArray = formData.highlights.split(',').map(h => h.trim());
-        const startDatesArray = formData.startDates.split(',').map(d => d.trim());
+        // FIXED: Filter out empty strings from arrays to prevent MongoDB 400 Validation Errors
+        const highlightsArray = formData.highlights ? formData.highlights.split(',').map(h => h.trim()).filter(Boolean) : [];
+        const startDatesArray = formData.startDates ? formData.startDates.split(',').map(d => d.trim()).filter(Boolean) : [];
 
         await axios.post(`${backendUrl}/api/tours`, {
           name: formData.name,
@@ -211,14 +210,18 @@ const AdminDashboard = () => {
           highlights: highlightsArray,
           difficulty: formData.difficulty,
           maxGroupSize: Number(formData.maxGroupSize),
-          startLocation: { description: formData.startLocation },
+          startLocation: { 
+            type: 'Point', 
+            description: formData.startLocation,
+            coordinates: [79.8612, 6.9271] // FIXED: Added default GeoJSON coordinates (Colombo) to prevent validation error
+          },
           startDates: startDatesArray,
           timeline: timeline
         });
         toast.success('Tour Created Successfully!');
 
       } else if (activeTab === 'package') {
-        const featuresArray = formData.features.split(',').map(f => f.trim());
+        const featuresArray = formData.features ? formData.features.split(',').map(f => f.trim()).filter(Boolean) : [];
         await axios.post(`${backendUrl}/api/packages`, {
           title: formData.title,
           days: Number(formData.days),
@@ -230,7 +233,7 @@ const AdminDashboard = () => {
         toast.success('Package Created Successfully!');
 
       } else if (activeTab === 'vehicle') {
-        const featuresArray = formData.features.split(',').map(f => f.trim());
+        const featuresArray = formData.features ? formData.features.split(',').map(f => f.trim()).filter(Boolean) : [];
         await axios.post(`${backendUrl}/api/vehicles`, {
           type: formData.type,
           model: formData.model,
